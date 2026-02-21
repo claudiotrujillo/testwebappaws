@@ -9,9 +9,10 @@ const cognitoClient = new CognitoIdentityProviderClient({
     region: process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1',
 })
 
-function computeSecretHash(username: string): string {
+function computeSecretHash(username: string): string | undefined {
     const clientId = process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!
-    const clientSecret = process.env.COGNITO_CLIENT_SECRET!
+    const clientSecret = process.env.COGNITO_CLIENT_SECRET
+    if (!clientSecret) return undefined
     return createHmac('sha256', clientSecret)
         .update(username + clientId)
         .digest('base64')
@@ -34,7 +35,7 @@ export async function POST(request: NextRequest) {
             ClientId: process.env.NEXT_PUBLIC_COGNITO_CLIENT_ID!,
             Username: email,
             ConfirmationCode: code,
-            SecretHash: secretHash,
+            ...(secretHash && { SecretHash: secretHash }),
         })
 
         await cognitoClient.send(command)
