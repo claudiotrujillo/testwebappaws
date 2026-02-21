@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { jwtVerify, createRemoteJWKSet } from 'jose'
 
 const REGION = process.env.NEXT_PUBLIC_COGNITO_REGION || 'us-east-1'
-const USER_POOL_ID = process.env.COGNITO_USER_POOL_ID || ''
+const USER_POOL_ID = process.env.NEXT_PUBLIC_COGNITO_USER_POOL_ID || process.env.COGNITO_USER_POOL_ID || ''
 const JWKS_URI = `https://cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}/.well-known/jwks.json`
 
 const JWKS = createRemoteJWKSet(new URL(JWKS_URI))
