@@ -3,12 +3,12 @@ import { updateItem, deleteItem } from '@/lib/dynamo'
 
 export async function PUT(
     request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
         const body = await request.json()
         const { name, description, status } = body
-        const { id } = params
+        const { id } = await params
 
         if (!name || !description) {
             return NextResponse.json({ error: 'Name and description are required' }, { status: 400 })
@@ -29,10 +29,11 @@ export async function PUT(
 
 export async function DELETE(
     _request: NextRequest,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        await deleteItem(params.id)
+        const { id } = await params
+        await deleteItem(id)
         return NextResponse.json({ success: true })
     } catch (error) {
         console.error('Error deleting item:', error)
