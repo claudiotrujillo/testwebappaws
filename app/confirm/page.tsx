@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 
-export default function ConfirmPage() {
+function ConfirmForm() {
     const router = useRouter()
     const searchParams = useSearchParams()
     const [email, setEmail] = useState('')
@@ -146,5 +146,20 @@ export default function ConfirmPage() {
                 )}
             </div>
         </div>
+    )
+}
+
+export default function ConfirmPage() {
+    return (
+        <Suspense fallback={
+            <div className="auth-container">
+                <div className="auth-card" style={{ textAlign: 'center', color: 'var(--text-secondary)' }}>
+                    <span className="spinner" style={{ borderTopColor: 'var(--accent)', marginBottom: '1rem' }} />
+                    <p>Cargando página de confirmación...</p>
+                </div>
+            </div>
+        }>
+            <ConfirmForm />
+        </Suspense>
     )
 }
