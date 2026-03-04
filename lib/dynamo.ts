@@ -5,6 +5,7 @@ import {
     PutCommand,
     UpdateCommand,
     DeleteCommand,
+    QueryCommand,
 } from '@aws-sdk/lib-dynamodb'
 import { v4 as uuidv4 } from 'uuid'
 
@@ -55,23 +56,65 @@ export async function updateItem(
     data: Partial<Omit<AppItem, 'id' | 'createdAt'>>
 ): Promise<void> {
     const now = new Date().toISOString()
-    await dynamo.send(
-        new UpdateCommand({
+
+    const queryResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: 'id = :id',
+        ExpressionAttributeValues: { ':id': id }
+    }))
+
+    const existingItem = queryResult.Items?.[0] as AppItem | undefined
+    if (!existingItem) {
+        throw new Error('Item not found')
+    }
+
+    // If the sort key (name) is changing, we must recreate the item
+    if (data.name && data.name !== existingItem.name) {
+        const newItem = {
+            ...existingItem,
+            ...data,
+            updatedAt: now
+        }
+
+        await dynamo.send(new DeleteCommand({
             TableName: TABLE,
-            Key: { id },
-            UpdateExpression:
-                'SET #name = :name, description = :description, #status = :status, updatedAt = :updatedAt',
-            ExpressionAttributeNames: { '#name': 'name', '#status': 'status' },
-            ExpressionAttributeValues: {
-                ':name': data.name,
-                ':description': data.description,
-                ':status': data.status,
-                ':updatedAt': now,
-            },
-        })
-    )
+            Key: { id, name: existingItem.name }
+        }))
+
+        await dynamo.send(new PutCommand({
+            TableName: TABLE,
+            Item: newItem
+        }))
+    } else {
+        await dynamo.send(
+            new UpdateCommand({
+                TableName: TABLE,
+                Key: { id, name: existingItem.name },
+                UpdateExpression:
+                    'SET description = :description, #status = :status, updatedAt = :updatedAt',
+                ExpressionAttributeNames: { '#status': 'status' },
+                ExpressionAttributeValues: {
+                    ':description': data.description || existingItem.description,
+                    ':status': data.status || existingItem.status,
+                    ':updatedAt': now,
+                },
+            })
+        )
+    }
 }
 
 export async function deleteItem(id: string): Promise<void> {
-    await dynamo.send(new DeleteCommand({ TableName: TABLE, Key: { id } }))
+    const queryResult = await dynamo.send(new QueryCommand({
+        TableName: TABLE,
+        KeyConditionExpression: 'id = :id',
+        ExpressionAttributeValues: { ':id': id }
+    }))
+
+    const existingItem = queryResult.Items?.[0]
+    if (existingItem) {
+        await dynamo.send(new DeleteCommand({
+            TableName: TABLE,
+            Key: { id, name: existingItem.name }
+        }))
+    }
 }
